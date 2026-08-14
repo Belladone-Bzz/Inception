@@ -36,6 +36,7 @@ Containers and Virtual machines have similar resource isolation and allocation b
 <p align="center">
 <img src="https://www.techtarget.com/rms/onlineimages/containers_vs_virtual_machines-f.png"  width="865px"/>
 </p>
+
 ### How do containers work ?
 The effectiveness of containers rely on several key features of the Linux kernel, including namespaces (isolation of resources: network, PID, users...), capabilities (privileges control of root) and cgroups (resources limitation: CPU, memory, I/O...). The combination of namespaces, capabilities and cgroups enables containers to run in an isolated, secure and efficient manner. Namespaces ensure resource isolation, capabilities control process privileges and cgroups manage resource allocation. This combination provides a robust platform for running applications in controlled environments, whilst optimising the use of host resources.
 
@@ -67,7 +68,7 @@ These images are built using a recipe file called a Dockerfile. It describes, st
 
 This layer-based approach also saves space and makes updates easier. To optimise the layers, it is recommended to place instructions that rarely change (installing dependencies) at the top of the Dockerfile, and those that change frequently (copying code) at the bottom. This ensures that the cache is reused as much as possible.
 
-**To turn a Dockerfile into a runnable container image, we need to use a build tool.
+**To turn a Dockerfile into a runnable container image, we need to use a build tool.**
 
 ## Containers building tools
 Historically, `docker build` was used to turn Dockerfile into runnable image, but nowadays there are other, more flexible and modern solutions available. Here are the main tools used:
@@ -77,7 +78,9 @@ Historically, `docker build` was used to turn Dockerfile into runnable image, bu
 - BuildKit: A modern reimplementation of Docker’s build engine. It offers improved parallelism, advanced cache management, support for secret volumes, and much more.
 
 **The contribution of these tool was to bring together existing building blocks of contenairisation (namespaces, cgroups, capabilities) and the image format into a usable tool, whereas previous technologies required considerable system expertise.** Each tool has its own advantages depending on your context: security, performance, compatibility with CI/CD, etc. For this project, Docker is the tool being used which is ideal for development and learning.
+
 ### Why use Docker ?
+
 Solomon Hykes launched Docker on 20 March 2013. It was developed for an internal project at dotCloud, a French company and has been distributed as an open-source project since March 2013 and is currently the most widely used containerization engine.
 
 The main advantage of Docker is therefore the ability to model each container as an image that can be stored locally. A container is like a virtual machine but without a kernel (the entire system that enables the virtual machine to run, including the OS, graphics, networking, etc.). In other words, a container contains only the application and its dependencies. 
@@ -91,29 +94,55 @@ Features of Docker:
 
 ## Secrets Docker vs Environment Variables
 ### Containers Security
-Containers have revolutionized application deployment, but they introduce specific attack surfaces that traditional security approaches do not cover. The fundamental problem is that containers share the host’s kernel. Unlike a VM, which has its own kernel, a container is simply an isolated process. If an attacker exploits a kernel vulnerability from within a container, they could potentially compromise the entire node and, by extension, all the other containers running on it. These risks are not merely theoretical. After analyzing 250,000 public images on Docker Hub, researchers at Sysdig identified 1,652 malicious ones: cryptominers, embedded secrets that could be used as backdoors, etc...
+Containers have revolutionized application deployment, but they also introduce specific security concerns. Containers share the host's kernel, unlike virtual machines which have their own kernel. A vulnerability in the kernel or an overly privileged container can therefore potentially affect the host and other containers.
 
-Understanding where the risks lie is the first step towards mitigating them. Containers have vulnerabilities at several levels:
-![[Pasted image 20260813163354.png]]
+Security must therefore be considered at several levels: the host system, the container runtime, the images, the network, the volumes, and the data handled by the applications.
 
-Here, we will focus on exposed secrets with Docker.
-### Secrets Docker
-A _secret_ is a blob of data, such as a password, SSH private key, SSL certificate, or another piece of data that should not be transmitted over a network or stored unencrypted in a Dockerfile or in your application's source code. You can use Docker _secrets_ to centrally manage this data and securely transmit it to only those containers that need access to it. Secrets are encrypted during transit and at rest in a Docker swarm. A given secret is only accessible to those services which have been granted explicit access to it, and only while those service tasks are running.
+One particularly important aspect is secret management.
 
-When working with Docker, it is tempting to pass these secrets via environment variables or to copy them directly into the image. This is a fatal mistake! Once inside the image, these secrets are accessible to anyone who downloads it. 
+### What is secret ?
+A secret is sensitive information that an application needs in order to operate.
 
-Understanding where secrets might leak is the first step towards protecting them.
-![[Pasted image 20260813171500.png]]
+Typical examples include:
+- Database passwords
+- API keys
+- SSH private keys
+- TLS certificates
+- Authentication tokens
 
-### How to protect secrets with Docker ?
+There are several ways to provide this information to a container. The simplest one is to use environment variables, but this is not always the safest solution.
 
-- Environment variables - Not efficient
-	Environment variables are a common approach to injecting information into an application. You can inline these variables when calling an application, or export them to make them globally available When developing and your application runs with artificial or test data, it’s a solution. When fetching data from a production database, choose a different method. But with true secrets and for prod, it not a good habit to use env for secrets. The first issue with using environment variables is that they can be viewed in the process list.
-- Using files - Not efficient
-	Instead of relying on environment variables, we could use safe files. But that is also not true even when you remove the secret afterward from your image. Docker stores each layer in the file system and also pushes these layers to the registry that you are using. Everybody with access to the registry can get access to the secrets.
-- Using Buildkit - Efficient
-	Allows secret management
+The important distinction is that an environment variable is primarily a configuration mechanism, while a secret is sensitive data that should not be exposed : not be stored directly in a Dockerfile, committed to a Git repository, or unnecessarily exposed to containers.
 
+### Environment Variables
+Environment variables are commonly used to configure containers. Inside the container, the application can access these values through its environment. This approach is convenient and perfectly appropriate for many non-sensitive configuration value. 
+
+However, using environment variables for passwords and other sensitive information is dangerous. The value becomes part of the container's environment and may potentially be exposed through debugging tools, application diagnostics, process inspection, or other mechanisms. 
+
+Another important point is that putting a secret in a Dockerfile is particularly dangerous because the password will be part of the image configuration. Anyone with access to the resulting image may be able to retrieve it. Even if the file is deleted in a later Dockerfile instruction, the previous filesystem layer may still contain the file. Docker images are built from multiple layers, so deleting a secret in a later layer does not necessarily remove it from the image history.
+
+### What about .env files for secret ?
+A .env file can contain sensitive data and the Compose file can reference these variables. This is more convenient than hard-coding the values directly in the Compose file, but a .env file is not a secret management system.
+
+Process with variable in .env is a bit more secure than just puting potential sensitive data in environement variable, if the .env file is excluded from Git inside a .gitignore. This is more convenient than hard-coding the values directly in the Compose file, but a .env file is not a secret management system. 
+
+For local development, this can be acceptable, however, for sensitive production credentials, a dedicated secret mechanism is preferable.
+
+### Docker Secrets
+Docker provides a dedicated mechanism called Docker Secrets. The main idea is simple: instead of putting a password directly into an environment variable or inside an image, Docker provides the secret to the container as a file.
+
+For example, a secret named db_password can be made available inside a container at `/run/secrets/db_password`. The application can then read the content of this file when it needs the password.
+
+This is safer than baking the password into the image because the secret is not part of the image itself. The access to a secret is also explicitly granted to the services that need it.
+
+### BuildKit
+Docker's BuildKit also provides a mechanism for handling secrets during the image build process. This is useful when a build needs temporary access to something sensitive, such as a private package repository or authentication token.
+
+The important point is that the secret can be provided temporarily during the build without being written into the resulting image layer.
+
+**BuildKit secrets are therefore useful for build-time secrets, while Docker Secrets are primarily intended for runtime secrets.**
+
+For this project, Docker Secrets are the more relevant mechanism because the database credentials are needed by running services rather than by the image-building process.
 
 
 ## Docker Network vs Host Network
