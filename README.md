@@ -25,7 +25,7 @@ Containers and Virtual machines have similar resource isolation and allocation b
 **Containers** are a simulation at the app layer that packages code and dependencies together. Multiple containers can run on the same machine and share the OS kernel with other containers, each running as isolated processes in user space. Containers take up less space than VMs (talking about tens of MBs in size), can handle more applications, and require fewer VMs and Operating Systems. They are particularly useful when you want to:
 - Deploy applications quickly
 - Work with microservices
--  Automate your environments
+- Automate your environments
 - Streamline the transition from dev to prod
 
 **Virtual Machines (VMs)** are a simulation of physical hardware turning one server into many servers. The hypervisor allows multiple VMs to run on a single machine. Each machine includes a full copy of an operating system, the application, necessary binaries, and libraries. VMs take more space compared to containers (talking about tens of GBs in size), and they can be slow to boot. This approach is suitable for complex or heterogeneous environments, such as:
@@ -43,11 +43,10 @@ The effectiveness of containers rely on several key features of the Linux kernel
 #### Isolation with namespaces
 Namespaces are mechanisms in the Linux kernel that create isolated environments for processes. For example, a network namespace provides each container with its own network stack, including interfaces and firewall rules. This isolation ensures that processes within one container cannot see or affect those in another container or on the host.
 
-The namespace mechanism did not originate with containers. The first namespace – the mount points namespace – appeared as early as 2002 in kernel version 2.4.19. The UTS and IPC namespaces followed in 2006, the PID and Network namespaces in 2008, and then the User namespace in 2013, which finally paved the way for unprivileged containers. Cgroups were introduced in 2016 and the Time namespace in 2020 with kernel 5.6. The arrival of Docker in 2013 did not, therefore, introduce anything new at the kernel level. Its contribution was to bring together existing building blocks and the image format into a usable tool, whereas previous technologies required considerable system expertise. 
+The namespace mechanism did not originate with containers. The first namespace appeared as early as 2002 in kernel version 2.4.19. The arrival of Docker in 2013 did not, therefore, introduce anything new at the kernel level. Its contribution was to bring together existing building blocks and the image format into a usable tool, whereas previous technologies required considerable system expertise. 
 
 **Namespaces types**
 The kernel does not provide a single isolation mechanism but rather eight independent namespaces, each of which isolates a specific resource. They can be combined: for example, to isolate the network without isolating the processes. It is this level of granularity that distinguishes a namespace from a virtual machine.
-![[Pasted image 20260813115028.png]]
 
 #### Privilege management using capabilities
 Historically, a Linux process was either run as root (with full privileges) or as a normal user (with no privileges). This binary model presented a simple problem: a web server only needs to open port 80, but to do so it had to start as root, and therefore with the right to do everything – including things it would never actually need to do.
@@ -63,7 +62,7 @@ A process enters an infinite loop and overloads a core. A service is leaking and
 A container image is a kind of snapshot of an application, ready to be launched in an isolated environment. It contains everything needed for the application to run: code, dependencies, environment variables, configuration files, etc.
 
 These images are built using a recipe file called a Dockerfile. It describes, step by step, how to build your image. This Dockerfile is a simple text file. Each instruction in the Dockerfile creates a layer in the image. These layers are stacked on top of one another and cached, which makes the process:
--  Fast (only modified layers are rebuilt)
+- Fast (only modified layers are rebuilt)
 - Lightweight (layers can be shared across multiple images)
 
 This layer-based approach also saves space and makes updates easier. To optimise the layers, it is recommended to place instructions that rarely change (installing dependencies) at the top of the Dockerfile, and those that change frequently (copying code) at the bottom. This ensures that the cache is reused as much as possible.
@@ -146,12 +145,88 @@ For this project, Docker Secrets are the more relevant mechanism because the dat
 
 
 ## Docker Network vs Host Network
+Containers are isolated from each other by default. This isolation also applies to networking.
+
+Each container normally has its own network namespace, which means that it has its own network interfaces, IP addresses, routing table, and network configuration.
+
+Docker provides several network drivers to control how containers communicate with each other and with the host. 
+
+For most applications, the default Docker networking model is preferable because it provides a good balance between isolation, simplicity, and performance.
+
+Host networking can be useful for applications that need very direct access to the host network or where avoiding network translation is important, but it reduces network isolation.
+
+### Docker Network
+A Docker network provides an isolated virtual network that containers can join.
+
+When several containers are connected to the same Docker network, they can communicate with each other without exposing their ports directly to the host.
+
+One of the advantages of a Docker network is Docker's internal DNS. Instead of using an IP address, containers can communicate using the service name defined in Docker Compose. This is important because container IP addresses can change when containers are recreated. The service name remains stable even if the underlying container changes.
+
+A container can communicate with another container through a Docker network without publishing its port to the host. You can only expose the ports that actually need to be accessible from outside the container network.
+
+Docker networking should not be considered a complete security boundary. A network configuration can reduce the attack surface, but it does not replace authentication, encryption, firewalls, or application-level security.
+
+### Host Network
+The host network works differently. Instead of giving the container its own isolated network namespace, Docker makes the container use the host's network stack directly. Port publishing is therefore unnecessary for this container. 
 
 ## Docker Volumes vs Bind Mounts
+Containers are designed to be temporary and replaceable. If a container is deleted, the data stored inside is normally deleted with it. This becomes a problem for stateful applications such as MariaDB or WordPress, where data must survive container restarts and recreation.
 
+Docker provides several mechanisms to persist data outside the container's writable layer. Two of the most common are Docker volumes and bind mounts.
 
+### Docker Volume
+A Docker volume is storage managed by Docker itself. The important point is that the application sees: `/var/lib/mysql` (for a sql database for exemple) as a normal directory, while Docker manages where the data is physically stored on the host. 
+
+On a typical Linux installation, Docker-managed volumes are stored somewhere under Docker's data directory, commonly: `/var/lib/docker/volumes/`.
+
+Volumes are particularly useful when Docker should manage the storage lifecycle. Volumes are well suited for databases and other persistent application data.
+
+### Bind Mounts
+A bind mount works differently.
+
+Instead of asking Docker to manage the storage location, we explicitly choose a directory or file on the host and mount it into the container. Docker makes it available inside the container.
+
+Changes made on the host are visible inside the container, and depending on the mount mode, changes made inside the container can also affect the host files.
+
+Bind mounts are useful when the files need to be directly controlled by the host. They are particularly convenient for:
+- Development
+- Configuration files
+- Source code
+- Custom NGINX configuration
+- Files that need to be edited directly from the host
+
+The configuration can be edited directly on the host without rebuilding the Docker image.
+
+Bind mounts can also be made read-only. This can improve security because the container does not need write access to the host directory. For better security, we have to give a container only the filesystem permissions it actually needs.
 
 ## Sources included and design choices
+
+~ Come back here later ~
+
+Network:
+For this project, a regular Docker network is the appropriate choice.
+
+NGINX needs to communicate with WordPress, and WordPress needs to communicate with MariaDB. These services can therefore be placed on dedicated Docker networks.
+
+The host network would provide less isolation and would not bring any significant benefit to this web stack.
+
+MariaDB does not need to be directly accessible from the Internet.
+
+This separation limits the number of services exposed to the outside world and therefore reduces the attack surface.
+
+Volume:
+In this project, different services have different storage requirements.
+
+MariaDB contains persistent database data, so a Docker volume is appropriate.
+
+NGINX configuration, on the other hand, may benefit from a bind mount during development.
+
+The host owns and edits the NGINX configuration, while Docker manages the database volume.
+
+This gives each type of data an appropriate storage mechanism.
+
+
+
 ## Instructions
 
 
