@@ -234,8 +234,6 @@ make re
 make clean
 ```
 
-Use cleanup commands carefully because Docker cleanup can remove resources that are not related to this project.
-
 ## **Debugging checklist**
 
 If the website is unavailable:
