@@ -144,11 +144,45 @@ NGINX is the public entry point of the infrastructure. It listens on port `443`;
 
 MariaDB and PHP-FPM are not published directly to the host.
 
+The NGINX initialization script:
+
+1. creates the SSL directory;
+2. generates the TLS certificate and private key;
+3. starts NGINX in the foreground.
+
 ### WordPress and PHP-FPM
 The WordPress container contains: WordPress ; PHP 8.2 ; PHP-FPM ; the PHP MySQL extension ; WP-CLI. PHP-FPM listens on port `9000` inside the Docker network. NGINX communicates with it using `wordpress:9000`. The hostname `wordpress` is the Docker Compose service name and is resolved through Docker's internal DNS.
 
+The WordPress initialization script:
+
+1. downloads WordPress;
+2. extracts it into `/var/www/html`;
+3. downloads WP-CLI;
+4. waits for MariaDB to accept connections;
+5. creates `wp-config.php` when it does not already exist;
+6. configures the WordPress database connection;
+7. configures the WordPress site URL;
+8. installs WordPress;
+9. creates the second WordPress user;
+10. starts PHP-FPM in the foreground.
+
 ### MariaDB
 MariaDB is installed directly in a Debian-based custom image. It listens on port `3306` inside the Docker network and stores its database files in the persistent `db_data` volume. MariaDB is not exposed through a host port because only WordPress needs to access it.
+
+The MariaDB initialization script:
+
+1. starts MariaDB temporarily;
+2. waits until MariaDB responds;
+3. creates the database if necessary;
+4. creates the application user;
+5. grants privileges on the application database;
+6. configures the root password;
+7. shuts down the temporary MariaDB process;
+8. starts MariaDB again as the final foreground service.
+
+The purpose of the first MariaDB process is to make SQL initialization possible before the final database process is launched.
+
+The script also checks whether the database already exists so that initialization is not repeated unnecessarily when the persistent volume already contains data.
 
 ### Docker network
 The project uses a dedicated Docker bridge network named `inception`.
@@ -201,6 +235,90 @@ make clean
 ```
 
 Use cleanup commands carefully because Docker cleanup can remove resources that are not related to this project.
+
+## **Debugging checklist**
+
+If the website is unavailable:
+
+### Check containers
+
+```bash
+docker ps
+```
+
+### Check logs
+
+```bash
+docker compose -f srcs/docker-compose.yml logs nginx
+docker compose -f srcs/docker-compose.yml logs wordpress
+docker compose -f srcs/docker-compose.yml logs mariadb
+```
+
+### Check the network
+
+```bash
+docker network inspect inception
+```
+
+### Check volumes
+
+```bash
+docker volume ls
+docker volume inspect db_data
+docker volume inspect wp_files
+```
+
+### Check NGINX configuration
+
+Inside the NGINX container:
+
+```bash
+nginx -t
+```
+
+### Check PHP-FPM
+
+Inside the WordPress container:
+
+```bash
+ps aux | grep php-fpm
+```
+
+### Check MariaDB
+
+Inside the MariaDB container:
+
+```bash
+mysqladmin ping
+```
+
+## Data persistence verification
+
+To check data persistence, a useful development test is:
+
+1. start the project;
+2. create WordPress data;
+3. stop the containers with:
+
+```bash
+make down
+```
+
+4. start again:
+
+```bash
+make
+```
+
+5. verify that the WordPress data is still present.
+
+Then test the destructive case separately only when appropriate:
+
+```bash
+docker compose -f srcs/docker-compose.yml down -v
+```
+
+This removes the Compose-managed volumes and therefore can remove the persistent application data.
 
 ## **Resources**
 - Peer learning. BIG thanks to Audrey, Benjamin, Jolyne(The Queen), Luka, Ady <3

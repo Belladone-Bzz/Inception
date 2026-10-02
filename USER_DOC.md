@@ -5,7 +5,7 @@ This project provides a small WordPress website infrastructure composed of three
 
 | Service | Role | Exposition |
 |---|---|---|
-| NGINX | HTTPS entry point and web server | Yes, port 443 |
+| NGINX | HTTPS entry point and web server | Port 443 |
 | WordPress + PHP-FPM | WordPress application and PHP execution | No |
 | MariaDB | WordPress database | No |
 
@@ -40,7 +40,7 @@ https://<user>.42.fr
 
 The infrastructure exposes only port `443`. The browser connects to NGINX. NGINX then communicates internally with the WordPress container. If the domain does not resolve automatically on the VM, verify that the required `<user>.42.fr` entry points to the local IP address according to the activity setup.
 
-## 5. Access the WordPress administration panel
+## Access the WordPress administration panel
 
 The WordPress administration interface is available at:
 
@@ -59,7 +59,7 @@ make stop
 make fclean
 ```
 
-## 6. Credentials
+## Credentials
 
 Credentials are configured locally through:
 
@@ -87,7 +87,7 @@ WP_USER_PASSWORD
 
 Other variables identify the database, WordPress users and site configuration.
 
-## 7. Check that the services are running
+## Check that the services are running
 
 Use:
 
@@ -137,7 +137,7 @@ docker inspect wordpress
 docker inspect mariadb
 ```
 
-## 9. Check the Docker network
+## Check the Docker network
 
 The services communicate through the `inception` network.
 
@@ -155,7 +155,7 @@ docker network inspect inception
 
 The three service containers should be connected to this network.
 
-## 10. Check persistent storage
+## Check persistent storage
 
 List Docker volumes:
 
@@ -184,7 +184,7 @@ The host-side data is configured under:
 /home/<user>/data/
 ```
 
-## 11. Persistence test
+## Persistence test
 
 To verify that application data survives container recreation:
 
