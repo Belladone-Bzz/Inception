@@ -103,93 +103,21 @@ The cleanup targets must be used carefully because they remove Docker resources 
 
 ### MariaDB
 
-```text
-# MariaDB is built from:
-srcs/requirements/mariadb/Dockerfile
-```
+MariaDB is built from `srcs/requirements/mariadb/Dockerfile`. Its configuration is in `srcs/requirements/mariadb/conf/mariadb.cnf`. Its initialization script is `srcs/requirements/mariadb/tools/init.sh`. The database is stored in `/var/lib/mysql` and persisted through the `db_data` named volume.
 
-```text
-# Its configuration is:
-srcs/requirements/mariadb/conf/mariadb.cnf
-```
-
-```text
-# Its initialization script is:
-srcs/requirements/mariadb/tools/init.sh
-```
-
-```text
-# The database is stored in:
-/var/lib/mysql
-# and persisted through the `db_data` named volume.
-```
 
 ### WordPress
 
-```text
-# WordPress is built from:
-srcs/requirements/wordpress/Dockerfile
-```
-
-```text
-# PHP-FPM configuration:
-srcs/requirements/wordpress/conf/www.conf
-```
-
-```text
-# Initialization:
-srcs/requirements/wordpress/tools/init.sh
-```
-
-```text
-# The WordPress application files are stored in:
-/var/www/html
-# and persisted through the `wp_files` named volume.
-```
-
-```text
-# PHP-FPM listens on:
-9000
-```
+WordPress is built from `srcs/requirements/wordpress/Dockerfile`. PHP-FPM configuration is in `srcs/requirements/wordpress/conf/www.conf`. Its initialization script is
+`srcs/requirements/wordpress/tool/init.sh`. The WordPress application files are stored in `/var/www/html` and persisted through the `wp_files` named volume. PHP-FPM listens on port 9000.
 
 ### NGINX
 
-```text
-# NGINX is built from:
-srcs/requirements/nginx/Dockerfile
-```
-
-```text
-#Configuration:
-srcs/requirements/nginx/conf/nginx.conf
-```
-
-```text
-# Initialization:
-srcs/requirements/nginx/tools/init.sh
-```
-
-```text
-# NGINX is the only service publishing a host port:
-443:443
-```
-
-```text
-# TLS is restricted to:
-TLSv1.2
-TLSv1.3
-```
-
-```text
-# NGINX forwards PHP requests to:
-wordpress:9000
-```
+NGINX is built from `srcs/requirements/nginx/Dockerfile`. Its configuration is in `srcs/requirements/nginx/conf/nginx.conf`. Its initialization script is `srcs/requirements/nginx/tools/init.sh`. NGINX is the only service publishing a host port `443:443`. TLS is restricted to: TLSv1.2 and TLSv1.3. NGINX forwards PHP requests to: wordpress:9000.
 
 ## Service communication
 
-The Docker network is `inception`.
-
-The important communication paths are:
+The Docker network is `inception`. The important communication paths are:
 
 ```text
 Host
@@ -207,11 +135,7 @@ WordPress/PHP-FPM
 MariaDB
 ```
 
-The services use Docker's internal DNS.
-
-Therefore `wordpress` resolves to the WordPress container, and `mariadb` resolves to the MariaDB container.
-
-Using service names is preferable to hard-coding container IP addresses because IP addresses may change when containers are recreated.
+The services use Docker's internal DNS. Therefore `wordpress` resolves to the WordPress container, and `mariadb` resolves to the MariaDB container. Using service names is preferable to hard-coding container IP addresses because IP addresses may change when containers are recreated.
 
 ## Container commands
 
@@ -257,11 +181,7 @@ docker volume inspect db_data
 docker volume inspect wp_files
 ```
 
-The two persistent storages are `db_data`(/var/lib/mysql) and `wp_files`(/var/www/html). Their host-side location is configured under `/home/<user>/data/`.
-
-Containers are replaceable. Volumes contain the persistent data.
-
-Therefore if we remove a container, the data remains in volume. If a new container mounts the same volume, the data is available again.
+The two persistent storages are `db_data`(/var/lib/mysql) and `wp_files`(/var/www/html). Their host-side location is configured under `/home/<user>/data/`. Containers are replaceable. Volumes contain the persistent data. Therefore if we remove a container, the data remains in volume. If a new container mounts the same volume, the data is available again.
 
 
 Removing the volumes is different. If we use :
