@@ -32,23 +32,13 @@ docker compose -f srcs/docker-compose.yml ps
 
 ## Access the website
 
-The website is accessed through HTTPS:
-
-```text
-https://<user>.42.fr
-```
+The website is accessed through HTTPS `https://<user>.42.fr`
 
 The infrastructure exposes only port `443`. The browser connects to NGINX. NGINX then communicates internally with the WordPress container. If the domain does not resolve automatically on the VM, verify that the required `<user>.42.fr` entry points to the local IP address according to the activity setup.
 
 ## Access the WordPress administration panel
 
-The WordPress administration interface is available at:
-
-```text
-https://<user>.42.fr/wp-admin
-```
-
-Use the administrator credentials configured in the local `.env` file.
+The WordPress administration interface is available at `https://<user>.42.fr/wp-admin`. You have to use the administrator credentials configured in the local `.env` file.
 
 ## Stop the activity
 
@@ -61,19 +51,7 @@ make fclean
 
 ## Credentials
 
-Credentials are configured locally through:
-
-```text
-srcs/.env
-```
-
-The public repository contains only the example configuration:
-
-```text
-srcs/.env_example
-```
-
-Never commit real passwords to Git.
+Credentials are configured locally through `srcs/.env`. The public repository contains only the example configuration `srcs/.env_example`.
 
 The main credential variables are:
 
@@ -121,15 +99,7 @@ docker compose -f srcs/docker-compose.yml logs -f
 docker ps
 ```
 
-The expected services are:
-
-```text
-nginx
-wordpress
-mariadb
-```
-
-To inspect a container:
+The expected services are: nginx; wordpress and mariadb. To inspect a container:
 
 ```bash
 docker inspect nginx
@@ -170,19 +140,7 @@ docker volume inspect db_data
 docker volume inspect wp_files
 ```
 
-The two volumes contain different types of persistent data:
-
-```text
-db_data -> MariaDB database
-
-wp_files -> WordPress website files
-```
-
-The host-side data is configured under:
-
-```text
-/home/<user>/data/
-```
+The two volumes contain different types of persistent data: `db_data -> MariaDB database` and `wp_files -> WordPress website files`. The host-side data is configured under `/home/<user>/data/`.
 
 ## Persistence test
 

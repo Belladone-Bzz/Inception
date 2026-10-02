@@ -62,13 +62,7 @@ From the repository root:
 make
 ```
 
-The Makefile runs Docker Compose with:
-
-```text
-srcs/docker-compose.yml
-```
-
-The Compose file builds the three services from their own Dockerfiles.
+The Makefile runs Docker Compose with `srcs/docker-compose.yml`. The Compose file builds the three services from their own Dockerfiles.
 
 ## Makefile commands
 

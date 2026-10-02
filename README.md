@@ -234,6 +234,8 @@ make re
 make clean
 ```
 
+The cleanup targets must be used carefully because they remove Docker resources and persistent data.
+
 ## **Debugging checklist**
 
 If the website is unavailable:
